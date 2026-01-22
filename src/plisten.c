@@ -80,6 +80,7 @@ int set_proc_ev_listen(int nl_sock, bool enable) {
 int handle_proc_ev(int nl_sock) {
   pid_t child = 0;
   int rc = 0;
+  pid_t last_traced_pid = 0;  // Track last traced PID to avoid duplicates
 
   struct __attribute__ ((aligned(NLMSG_ALIGNTO))) {
     struct nlmsghdr nl_hdr;
@@ -103,9 +104,15 @@ int handle_proc_ev(int nl_sock) {
         if (!ENABLE_SUDO && !ENABLE_SU && !ENABLE_SSH_CLIENT && !ENABLE_PASSWD)
           break;
 
+        // Skip duplicate EXEC events for the same PID
+        pid_t exec_pid = nlcn_msg.proc_ev.event_data.id.process_pid;
+        if (exec_pid == last_traced_pid)
+          break;
+        last_traced_pid = exec_pid;
+
         child = fork();
         if (child == 0) {
-          trace_process(nlcn_msg.proc_ev.event_data.id.process_pid);
+          trace_process(exec_pid);
           exit(0);
         }
         break;

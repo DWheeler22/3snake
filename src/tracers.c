@@ -154,24 +154,48 @@ enum tracer_types validate_process_name(void) {
   if (!process_name)
     return invalid_tracer;
 
-  if (ENABLE_SSH && strncmp(process_name, P_SSH_NET, strlen(P_SSH_NET)) == 0)
+  // Trim trailing spaces for comparison
+  int len = strlen(process_name);
+  while (len > 0 && process_name[len-1] == ' ') {
+    ((char*)process_name)[len-1] = '\0';
+    len--;
+  }
+
+  // Extract the binary name (first word/component of the command)
+  // This prevents "sudo passwd" from matching both sudo_tracer and passwd_tracer
+  char *binary_name = process_name;
+  
+  // Find the first space to get just the binary name
+  char *space_pos = strchr(process_name, ' ');
+  if (space_pos != NULL) {
+    // Make a copy and null-terminate at the space
+    char binary_copy[256];
+    int binary_len = space_pos - process_name;
+    if (binary_len < 256) {
+      strncpy(binary_copy, process_name, binary_len);
+      binary_copy[binary_len] = '\0';
+      binary_name = binary_copy;
+    }
+  }
+
+  if (ENABLE_SSH && strncmp(binary_name, P_SSH_NET, strlen(P_SSH_NET)) == 0)
     return ssh_tracer;
 
-  if (ENABLE_SSH && strncmp(process_name, P_SSH_ACC, strlen(P_SSH_ACC)) == 0)
+  if (ENABLE_SSH && strncmp(binary_name, P_SSH_ACC, strlen(P_SSH_ACC)) == 0)
     return ssh_tracer;
 
-  if (ENABLE_SUDO && strncmp(process_name, P_SUDO, strlen(P_SUDO)) == 0)
+  if (ENABLE_SUDO && strncmp(binary_name, P_SUDO, strlen(P_SUDO)) == 0)
     return sudo_tracer;
 
-  if (ENABLE_SU && strncmp(process_name, P_SU, strlen(P_SU)) == 0)
+  if (ENABLE_SU && strncmp(binary_name, P_SU, strlen(P_SU)) == 0)
     return su_tracer;
 
-  if (ENABLE_SSH_CLIENT && (strncmp(process_name, P_SSH_CLIENT, strlen(P_SSH_CLIENT)) == 0 ||
-                            strncmp(process_name, P_SSH_SCP_SFTP, strlen(P_SSH_SCP_SFTP)) == 0 ||
-                            strncmp(process_name, P_SSH_ADD, strlen(P_SSH_ADD)) == 0))
+  if (ENABLE_SSH_CLIENT && (strncmp(binary_name, P_SSH_CLIENT, strlen(P_SSH_CLIENT)) == 0 ||
+                            strncmp(binary_name, P_SSH_SCP_SFTP, strlen(P_SSH_SCP_SFTP)) == 0 ||
+                            strncmp(binary_name, P_SSH_ADD, strlen(P_SSH_ADD)) == 0))
     return ssh_client_tracer;
 
-  if (ENABLE_PASSWD && strncmp(process_name, P_PASSWD, strlen(P_PASSWD)) == 0)
+  if (ENABLE_PASSWD && strncmp(binary_name, P_PASSWD, strlen(P_PASSWD)) == 0)
     return passwd_tracer;
 
   return invalid_tracer;
@@ -240,6 +264,8 @@ void trace_process(pid_t traced_process) {
 
   if (!validate_process_path())
     return;
+
+  debug("[TRACE] Tracing %s (pid=%d) type=%d\n", process_name, traced_process, type);
 
   process_username = get_proc_username(traced_process);
 

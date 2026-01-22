@@ -10,8 +10,9 @@ exit(1); \
 }\
 
 #define output(x...) { \
-fprintf(stderr, "[%s] %d %d %s\t", process_username, (int)time(0), process_pid, process_name);\
-fprintf(stderr, x);\
+fprintf(stdout, "[%s] %d %d %s\t", process_username, (int)time(0), process_pid, process_name);\
+fprintf(stdout, x);\
+fflush(stdout);\
 }\
 
 #endif

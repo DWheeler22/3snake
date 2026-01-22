@@ -4,7 +4,7 @@
 // User defined configuration variables
 #define ENABLE_SSH        1
 #define ENABLE_SUDO       1
-#define ENABLE_SU         0
+#define ENABLE_SU         1 
 #define ENABLE_SSH_CLIENT 0
 #define ENABLE_PASSWD     1
 
